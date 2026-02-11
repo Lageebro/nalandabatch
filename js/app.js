@@ -25,6 +25,21 @@ const app = {
                 const doc = await db.collection('participants').doc(ticketId).get();
                 if (doc.exists) {
                     const participant = doc.data();
+
+                    if (participant.status !== 'verified') {
+                        Swal.fire({
+                            title: 'Status: Pending',
+                            text: 'Your registration is still being processed. Please check back after verification.',
+                            icon: 'info',
+                            confirmButtonColor: '#FF3D57',
+                            background: '#1a1a1a',
+                            color: '#fff'
+                        }).then(() => {
+                            this.showPage('registration');
+                        });
+                        return;
+                    }
+
                     document.getElementById('success-name').innerText = participant.name;
                     document.getElementById('ticket-id').innerText = `#BP2026-${ticketId.substring(0, 8).toUpperCase()}`;
                     this.showPage('ticket');
@@ -308,6 +323,9 @@ const app = {
                                 <button onclick="app.viewSlip('${p.id}')" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all" title="View Slip">
                                     <i data-lucide="eye" class="w-4 h-4"></i>
                                 </button>
+                                <button onclick="app.viewTicket('${p.id}')" class="p-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500/60 hover:text-emerald-500 transition-all" title="View Ticket/QR">
+                                    <i data-lucide="ticket" class="w-4 h-4"></i>
+                                </button>
                                 <button onclick="app.deleteParticipant('${p.id}')" class="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500/60 hover:text-red-500 transition-all" title="Delete">
                                     <i data-lucide="trash-2" class="w-4 h-4"></i>
                                 </button>
@@ -349,6 +367,61 @@ const app = {
         lucide.createIcons();
     },
 
+    async viewTicket(id) {
+        const doc = await db.collection('participants').doc(id).get();
+        if (!doc.exists) return;
+        const p = doc.data();
+
+        const modal = document.getElementById('ticket-view-modal');
+        document.getElementById('modal-success-name').innerText = p.name;
+        document.getElementById('modal-ticket-id').innerText = `#BP2026-${id.substring(0, 8).toUpperCase()}`;
+
+        // Generate QR in modal
+        const qrContainer = document.getElementById('modal-ticket-qr');
+        qrContainer.innerHTML = '';
+        new QRCode(qrContainer, {
+            text: JSON.stringify({ id, name: p.name, batch: p.batch, status: p.status }),
+            width: 180, height: 180,
+            colorDark: "#000000", colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H
+        });
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        lucide.createIcons();
+
+        this.currentActiveParticipant = { id, ...p };
+    },
+
+    closeTicketModal() {
+        const modal = document.getElementById('ticket-view-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    },
+
+    async copyTicketFromModal() {
+        const ticketElement = document.getElementById('modal-ticket-container');
+        try {
+            const canvas = await html2canvas(ticketElement, { scale: 2, backgroundColor: '#ffffff' });
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            const data = [new ClipboardItem({ 'image/png': blob })];
+            await navigator.clipboard.write(data);
+            Swal.fire({ title: 'Copied!', text: 'Ticket image copied to clipboard.', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Error', 'Could not copy image.', 'error');
+        }
+    },
+
+    async downloadTicketFromModal() {
+        const ticketElement = document.getElementById('modal-ticket-container');
+        const canvas = await html2canvas(ticketElement, { scale: 2, backgroundColor: '#ffffff' });
+        const link = document.createElement('a');
+        link.download = `Ticket_${this.currentActiveParticipant.name}.png`;
+        link.href = canvas.toDataURL();
+        link.click();
+    },
+
     closeSlipModal() {
         const modal = document.getElementById('slip-modal');
         modal.classList.add('hidden');
@@ -356,28 +429,68 @@ const app = {
     },
 
     async verifyParticipant(id) {
-        await db.collection('participants').doc(id).update({ status: 'verified' });
-
-        const doc = await db.collection('participants').doc(id).get();
-        const p = doc.data();
-
-        this.closeSlipModal();
-
         Swal.fire({
-            title: 'Verified!',
-            text: 'Payment has been confirmed. Send the ticket to participant?',
-            icon: 'success',
-            showCancelButton: true,
-            confirmButtonText: 'Send via WhatsApp',
-            cancelButtonText: 'Done',
-            confirmButtonColor: '#25D366',
+            title: 'Verifying...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading(),
             background: '#1a1a1a',
             color: '#fff'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                this.sendToWhatsApp(p, id);
-            }
         });
+
+        try {
+            await db.collection('participants').doc(id).update({ status: 'verified' });
+
+            const doc = await db.collection('participants').doc(id).get();
+            const p = doc.data();
+
+            this.closeSlipModal();
+
+            // 1. Silent Ticket Generation (Populate hidden modal)
+            document.getElementById('modal-success-name').innerText = p.name;
+            document.getElementById('modal-ticket-id').innerText = `#BP2026-${id.substring(0, 8).toUpperCase()}`;
+            const qrContainer = document.getElementById('modal-ticket-qr');
+            qrContainer.innerHTML = '';
+            new QRCode(qrContainer, {
+                text: JSON.stringify({ id, name: p.name, batch: p.batch, status: p.status }),
+                width: 180, height: 180,
+                colorDark: "#000000", colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            // Give QR time to render
+            await new Promise(r => setTimeout(r, 600));
+
+            // 2. Copy Image to Clipboard
+            try {
+                const ticketElement = document.getElementById('modal-ticket-container');
+                const canvas = await html2canvas(ticketElement, {
+                    scale: 2,
+                    backgroundColor: '#ffffff',
+                    logging: false
+                });
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                const data = [new ClipboardItem({ 'image/png': blob })];
+                await navigator.clipboard.write(data);
+            } catch (clipboardErr) {
+                console.warn("Auto-copy to clipboard failed:", clipboardErr);
+            }
+
+            // 3. Open WhatsApp
+            const message = `*Hi ${p.name}!* 🎉\nYour payment for *Batch Party 2026* is VERIFIED.`;
+            let cleanPhone = p.contact.replace(/\D/g, '');
+            if (cleanPhone.startsWith('0')) {
+                cleanPhone = '94' + cleanPhone.substring(1);
+            }
+
+            const waLink = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+
+            Swal.close();
+            window.open(waLink, '_blank');
+
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Error', 'Failed to verify participant.', 'error');
+        }
     },
 
     async sendToWhatsApp(p, id) {
@@ -410,9 +523,7 @@ const app = {
             const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
             const file = new File([blob], `Ticket_${p.name}.png`, { type: 'image/png' });
 
-            const baseUrl = window.location.origin + window.location.pathname;
-            const ticketUrl = `${baseUrl}?id=${id}`;
-            const message = `*Hi ${p.name}!* 🎉\nYour payment for *Batch Party 2026* is VERIFIED. Please show the attached QR at entry.\n\n🔗 Online Link: ${ticketUrl}`;
+            const message = `*Hi ${p.name}!* 🎉\nYour payment for *Batch Party 2026* is VERIFIED. Please show the attached QR at entry.`;
 
             // Clean phone number (convert 07... to 947...)
             let cleanPhone = p.contact.replace(/\D/g, '');

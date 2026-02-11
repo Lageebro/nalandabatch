@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Batch Party 2026 | Registration & QR Ticket</title>
+    <title>TRAVERSE '25 | Registration & QR Ticket</title>
 
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
@@ -59,7 +59,7 @@
         body {
             background: radial-gradient(circle at top right, #1a1a1a, #000);
             min-height: 100vh;
-            color: #fff;
+            color: #EDC001;
         }
 
         .glass {
@@ -152,7 +152,7 @@
             <div class="w-10 h-10 rounded-xl btn-primary flex items-center justify-center">
                 <i data-lucide="party-popper" class="text-white w-6 h-6"></i>
             </div>
-            <span class="font-extrabold text-xl tracking-tight">BATCH<span class="gradient-text">PARTY</span></span>
+            <span class="font-extrabold text-xl tracking-tight">TRAVERSE<span class="gradient-text">'25</span></span>
         </div>
 
         <div class="flex items-center gap-4">
@@ -171,8 +171,8 @@
         <!-- REGISTRATION PAGE -->
         <section id="page-registration" class="w-full max-w-xl animate-in">
             <div class="text-center mb-10">
-                <h1 class="text-4xl md:text-5xl font-black mb-4">Join the <span class="gradient-text">Greatest
-                        Night</span></h1>
+                <h1 class="text-4xl md:text-5xl font-black mb-4">TRAVERSE <span class="gradient-text"> '25
+                    </span></h1>
                 <p class="text-white/60">Fill the form, upload your payment slip and get your exclusive QR ticket
                     instantly.</p>
             </div>
@@ -202,10 +202,7 @@
                                 <select id="batch" name="batch" required
                                     class="w-full input-field rounded-2xl py-4 pl-12 pr-4 outline-none text-white appearance-none">
                                     <option value="" disabled selected>Select Batch</option>
-                                    <option value="2020">Batch 2020</option>
-                                    <option value="2021">Batch 2021</option>
-                                    <option value="2022">Batch 2022</option>
-                                    <option value="2023">Batch 2023</option>
+
                                     <option value="2024">Batch 2024</option>
                                     <option value="2025">Batch 2025</option>
                                     <option value="2026">Batch 2026</option>
@@ -468,23 +465,87 @@
 
     <!-- Slip Modal (Admin View) -->
     <div id="slip-modal"
-        class="fixed inset-0 z-[100] hidden items-center justify-center p-6 bg-black/80 backdrop-blur-md">
-        <div class="w-full max-w-2xl glass p-1 rounded-3xl relative">
+        class="fixed inset-0 z-[100] hidden items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div class="w-full max-w-2xl glass p-4 rounded-[2.5rem] relative overflow-y-auto max-h-[95vh]">
             <button onclick="app.closeSlipModal()"
-                class="absolute -top-12 right-0 text-white/60 hover:text-white flex items-center gap-2 font-bold select-none">
-                CLOSE <i data-lucide="x" class="w-6 h-6"></i>
+                class="absolute top-6 right-6 bg-black/40 hover:bg-black/60 p-2 rounded-full text-white/80 hover:text-white transition-all z-50">
+                <i data-lucide="x" class="w-6 h-6"></i>
             </button>
-            <div class="rounded-[1.4rem] overflow-hidden bg-black/40">
-                <img id="modal-slip-img" class="w-full max-h-[70vh] object-contain">
+            <div class="rounded-3xl overflow-hidden bg-black/20 border border-white/5 mb-4">
+                <img id="modal-slip-img" class="w-full max-h-[65vh] object-contain mx-auto">
             </div>
-            <div class="p-6 flex justify-between items-center text-white">
+            <div class="p-2 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-white">
                 <div>
-                    <h3 id="modal-slip-name" class="font-bold text-lg"></h3>
-                    <p id="modal-slip-batch" class="text-sm text-white/40"></p>
+                    <h3 id="modal-slip-name" class="font-bold text-xl gradient-text"></h3>
+                    <p id="modal-slip-batch" class="text-sm text-white/40 font-medium"></p>
                 </div>
                 <button id="verify-btn-modal"
-                    class="bg-emerald-500 hover:bg-emerald-400 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-emerald-500/20">
+                    class="w-full md:w-auto bg-emerald-500 hover:bg-emerald-400 text-white px-8 py-4 rounded-2xl font-black transition-all shadow-xl shadow-emerald-500/20 active:scale-95">
                     VERIFY PAYMENT
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ticket View Modal (Admin View) -->
+    <div id="ticket-view-modal"
+        class="fixed inset-0 z-[100] hidden items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div class="w-full max-w-sm glass p-4 rounded-[2.5rem] relative overflow-y-auto max-h-[90vh]">
+            <button onclick="app.closeTicketModal()"
+                class="absolute top-4 right-4 bg-black/20 hover:bg-black/40 p-2 rounded-full text-white/60 hover:text-white transition-all z-50">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            <div id="modal-ticket-container" class="bg-white rounded-[2rem] overflow-hidden text-black shadow-2xl">
+                <!-- Header -->
+                <div class="bg-gradient-to-br from-party-600 to-party-accent p-6 text-white text-center pb-12 relative">
+                    <div class="absolute -top-10 -right-10 w-32 h-32 bg-white/20 blur-3xl rounded-full"></div>
+                    <i data-lucide="check-circle-2" class="w-12 h-12 mx-auto mb-3"></i>
+                    <h2 class="text-xl font-black mb-1">OFFICIAL TICKET</h2>
+                    <p class="text-white/80 text-sm font-medium"><span id="modal-success-name"
+                            class="font-bold underline"></span></p>
+
+                    <!-- Zigzag cut effect -->
+                    <div class="absolute bottom-0 left-0 w-full h-3 overflow-hidden flex">
+                        <div class="flex shrink-0">
+                            <div class="w-6 h-6 bg-white rotate-45 transform translate-y-3"></div>
+                            <div class="w-6 h-6 bg-white rotate-45 transform translate-y-3"></div>
+                            <div class="w-6 h-6 bg-white rotate-45 transform translate-y-3"></div>
+                            <div class="w-6 h-6 bg-white rotate-45 transform translate-y-3"></div>
+                            <div class="w-6 h-6 bg-white rotate-45 transform translate-y-3"></div>
+                            <div class="w-6 h-6 bg-white rotate-45 transform translate-y-3"></div>
+                            <div class="w-6 h-6 bg-white rotate-45 transform translate-y-3"></div>
+                            <div class="w-6 h-6 bg-white rotate-45 transform translate-y-3"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Body -->
+                <div class="p-6 pt-8 text-center bg-white">
+                    <div class="bg-gray-50 rounded-2xl p-4 border border-gray-100 flex flex-col items-center">
+                        <div id="modal-ticket-qr"
+                            class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 scale-90"></div>
+                        <div class="mt-4 flex flex-col items-center gap-1">
+                            <p id="modal-ticket-id" class="font-mono text-xs font-bold text-gray-400"></p>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                <p class="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">Verified
+                                    Guest</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Actions -->
+            <div class="mt-4 flex gap-2">
+                <button onclick="app.copyTicketFromModal()"
+                    class="flex-1 bg-white/10 hover:bg-white/20 text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all">
+                    <i data-lucide="copy" class="w-4 h-4"></i> COPY
+                </button>
+                <button onclick="app.downloadTicketFromModal()"
+                    class="flex-1 btn-primary py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
+                    <i data-lucide="download" class="w-4 h-4"></i> SAVE
                 </button>
             </div>
         </div>
