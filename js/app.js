@@ -2,6 +2,8 @@
 const app = {
     currentParticipantId: null,
     isLoggedIn: false,
+    html5QrCode: null,
+    isScanning: false,
 
     init() {
         this.setupEventListeners();
@@ -264,6 +266,7 @@ const app = {
         const noData = document.getElementById('no-data');
         const totalStat = document.getElementById('total-stat');
         const verifiedStat = document.getElementById('verified-stat');
+        const scannedStat = document.getElementById('scanned-stat');
 
         // Check if snapshot listener already exists
         if (this.adminUnsubscribe) this.adminUnsubscribe();
@@ -285,6 +288,7 @@ const app = {
 
                 totalStat.innerText = participants.length;
                 verifiedStat.innerText = participants.filter(p => p.status === 'verified').length;
+                if (scannedStat) scannedStat.innerText = participants.filter(p => p.scanned).length;
 
                 if (participants.length === 0) {
                     listContainer.innerHTML = '';
@@ -314,6 +318,12 @@ const app = {
                                     ${p.status}
                                 </span>
                             </div>
+                            ${p.scanned ? `
+                                <div class="mt-1 flex items-center gap-1">
+                                    <i data-lucide="check-check" class="w-3 h-3 text-emerald-400"></i>
+                                    <span class="text-[8px] font-black text-emerald-500/80 uppercase">Entered</span>
+                                </div>
+                            ` : ''}
                         </td>
                         <td class="p-5">
                             <span class="text-[10px] text-white/30 uppercase">${p.timestamp ? new Date(p.timestamp).toLocaleDateString() : 'N/A'}</span>
@@ -623,6 +633,162 @@ const app = {
         link.href = url;
         link.download = `BatchParty_Backup_${new Date().toISOString().split('T')[0]}.json`;
         link.click();
+    },
+
+    // --- QR SCANNER LOGIC ---
+
+    async openScanner() {
+        const modal = document.getElementById('scanner-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+
+        if (!this.html5QrCode) {
+            this.html5QrCode = new Html5Qrcode("qr-reader");
+        }
+
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+        try {
+            await this.html5QrCode.start(
+                { facingMode: "environment" },
+                config,
+                this.onScanSuccess.bind(this)
+            );
+            this.isScanning = true;
+        } catch (err) {
+            console.error("Error starting scanner:", err);
+            Swal.fire('Camera Error', 'Could not access camera. Please ensure permissions are granted.', 'error');
+            this.closeScanner();
+        }
+    },
+
+    async closeScanner() {
+        const modal = document.getElementById('scanner-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+
+        if (this.html5QrCode && this.isScanning) {
+            try {
+                await this.html5QrCode.stop();
+                this.isScanning = false;
+            } catch (err) {
+                console.error("Error stopping scanner:", err);
+            }
+        }
+    },
+
+    async onScanSuccess(decodedText) {
+        // Pause scanner to prevent multiple scans
+        if (this.isScanning) {
+            await this.closeScanner();
+        }
+
+        try {
+            const data = JSON.parse(decodedText);
+            const ticketId = data.id;
+
+            if (!ticketId) throw new Error("Invalid QR Code");
+
+            Swal.fire({
+                title: 'Verifying Ticket...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading(),
+                background: '#1a1a1a',
+                color: '#fff'
+            });
+
+            const doc = await db.collection('participants').doc(ticketId).get();
+
+            if (!doc.exists) {
+                Swal.fire({
+                    title: 'INVALID TICKET',
+                    text: 'This ticket does not exist in our records.',
+                    icon: 'error',
+                    confirmButtonColor: '#FF3D57',
+                    background: '#1a1a1a',
+                    color: '#fff'
+                });
+                return;
+            }
+
+            const participant = doc.data();
+
+            // 1. Check if verified
+            if (participant.status !== 'verified') {
+                Swal.fire({
+                    title: 'ACCESS DENIED',
+                    html: `
+                        <div class="text-center">
+                            <p class="text-orange-500 font-bold mb-2">NOT VERIFIED</p>
+                            <p class="text-sm text-white/60">${participant.name} has not verified their payment yet.</p>
+                        </div>
+                    `,
+                    icon: 'warning',
+                    confirmButtonColor: '#FF3D57',
+                    background: '#1a1a1a',
+                    color: '#fff'
+                });
+                return;
+            }
+
+            // 2. Check if already scanned (One-time use)
+            if (participant.scanned) {
+                const scanTime = new Date(participant.scannedAt).toLocaleTimeString();
+                Swal.fire({
+                    title: 'DECLINED',
+                    html: `
+                        <div class="text-center">
+                            <p class="text-red-500 font-bold mb-2">ALREADY SCANNED</p>
+                            <p class="text-sm text-white/60">This ticket was already used for entry at <b>${scanTime}</b>.</p>
+                            <p class="text-xs text-white/40 mt-4">Guest: ${participant.name}</p>
+                        </div>
+                    `,
+                    icon: 'error',
+                    confirmButtonColor: '#FF3D57',
+                    background: '#1a1a1a',
+                    color: '#fff'
+                });
+                return;
+            }
+
+            // 3. Approve Entry & Mark as Scanned
+            await db.collection('participants').doc(ticketId).update({
+                scanned: true,
+                scannedAt: new Date().toISOString()
+            });
+
+            Swal.fire({
+                title: 'APPROVED',
+                html: `
+                    <div class="text-center animate-in">
+                        <div class="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i data-lucide="check" class="text-emerald-500 w-10 h-10"></i>
+                        </div>
+                        <h3 class="text-2xl font-black text-white mb-1">WELCOME!</h3>
+                        <p class="text-emerald-500 font-bold text-sm uppercase tracking-widest mb-4">Valid Entry Marked</p>
+                        <div class="p-4 bg-white/5 rounded-2xl border border-white/5 text-left">
+                            <p class="text-[10px] text-white/40 uppercase font-black mb-1">Guest Name</p>
+                            <p class="text-lg font-bold text-white mb-3">${participant.name}</p>
+                            <p class="text-[10px] text-white/40 uppercase font-black mb-1">Batch</p>
+                            <p class="text-sm font-bold text-white/80">${participant.batch}</p>
+                        </div>
+                    </div>
+                `,
+                icon: 'success',
+                confirmButtonText: 'CONTINUE SCANNING',
+                confirmButtonColor: '#10b981',
+                background: '#1a1a1a',
+                color: '#fff'
+            }).then(() => {
+                this.openScanner();
+            });
+
+            lucide.createIcons();
+
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Error', 'Could not process QR code data.', 'error');
+        }
     }
 };
 

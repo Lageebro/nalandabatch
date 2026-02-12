@@ -55,6 +55,9 @@
     <!-- html2canvas for image sharing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
+    <!-- QR Scanner Library -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+
     <style>
         body {
             background: radial-gradient(circle at top right, #1a1a1a, #000);
@@ -405,6 +408,11 @@
                     <p class="text-white/60 text-sm">Manage participants and verify payments.</p>
                 </div>
                 <div class="flex gap-3">
+                    <button onclick="app.openScanner()"
+                        class="bg-party-accent/10 hover:bg-party-accent/20 text-party-accent border border-party-accent/20 px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2">
+                        <i data-lucide="scan-line" class="w-4 h-4"></i>
+                        SCAN QR TICKET
+                    </button>
                     <button onclick="app.exportData()"
                         class="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2">
                         <i data-lucide="file-down" class="w-4 h-4"></i>
@@ -433,6 +441,9 @@
                         </div>
                         <div class="flex items-center gap-2">
                             <span id="verified-stat" class="text-emerald-500">0</span> Verified
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span id="scanned-stat" class="text-party-accent">0</span> Entered
                         </div>
                     </div>
                 </div>
@@ -547,6 +558,43 @@
                     class="flex-1 btn-primary py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
                     <i data-lucide="download" class="w-4 h-4"></i> SAVE
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Scanner Modal -->
+    <div id="scanner-modal"
+        class="fixed inset-0 z-[120] hidden items-center justify-center p-4 bg-black/90 backdrop-blur-xl">
+        <div class="w-full max-w-lg glass p-6 rounded-[2.5rem] relative overflow-hidden">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h3 class="text-xl font-black text-white tracking-tight">ENTRY <span
+                            class="gradient-text">SCANNER</span></h3>
+                    <p class="text-white/40 text-[10px] font-bold uppercase tracking-widest mt-1">One-time entry
+                        verification</p>
+                </div>
+                <button onclick="app.closeScanner()"
+                    class="bg-white/5 hover:bg-white/10 p-2 rounded-full text-white/60 hover:text-white transition-all">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <div class="rounded-3xl overflow-hidden bg-black/40 border border-white/10 relative">
+                <div id="qr-reader" class="w-full"></div>
+                <!-- Scanning Overlay -->
+                <div
+                    class="absolute inset-x-8 top-1/2 -translate-y-1/2 h-0.5 bg-party-accent/50 shadow-[0_0_15px_rgba(255,61,87,0.5)] animate-pulse z-10 pointer-events-none">
+                </div>
+            </div>
+
+            <div class="mt-6 flex items-center gap-3 p-4 bg-white/5 rounded-2xl border border-white/5">
+                <div class="w-10 h-10 rounded-xl bg-party-accent/20 flex items-center justify-center">
+                    <i data-lucide="info" class="text-party-accent w-5 h-5"></i>
+                </div>
+                <p class="text-[10px] text-white/50 leading-relaxed">
+                    Point your camera at the guest's QR ticket. The system will automatically verify registration and
+                    mark the entry.
+                </p>
             </div>
         </div>
     </div>
